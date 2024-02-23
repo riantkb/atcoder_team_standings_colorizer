@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AtCoder Team Standings Colorizer
 // @namespace    https://github.com/riantkb/atcoder_team_standings_colorizer
-// @version      0.1.1
+// @version      0.1.2
 // @description  AtCoder Team Standings Colorizer
 // @author       riantkb
 // @match        https://atcoder.jp/contests/*/standings/team
@@ -102,6 +102,10 @@ function decorate(tname, trating) {
 }
 
 function heuristic(ratings) {
+  if (ratings == undefined) {
+    setTimeout(main, 1000);
+    return;
+  }
   const lines = document.querySelectorAll("tbody#standings-tbody > tr > td.standings-username");
   // console.log(lines.length);
   if (lines.length == 0) {
@@ -138,12 +142,21 @@ function main() {
   console.log(isHeuristic);
   if (isHeuristic) {
     const fetchurl = "https://raw.githubusercontent.com/riantkb/atcoder_rating_crawler/master/heuristic.json";
-    fetch(fetchurl, { cache: "no-store" }).then((res) => {
-      res.json().then((dic) => {
-        const ratings = dic["data"];
-        heuristic(ratings);
+    fetch(fetchurl, { cache: "no-store" })
+      .then((res) => {
+        res
+          .json()
+          .then((dic) => {
+            const ratings = dic.data;
+            heuristic(ratings);
+          })
+          .catch((_e) => {
+            setTimeout(main, 3000);
+          });
+      })
+      .catch((_e) => {
+        setTimeout(main, 3000);
       });
-    });
   }
 }
 
