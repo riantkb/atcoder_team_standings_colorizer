@@ -1,0 +1,1 @@
+# AtCoder Team Standings Colorizer
