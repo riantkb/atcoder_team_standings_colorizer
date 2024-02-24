@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AtCoder Team Standings Colorizer
 // @namespace    https://github.com/riantkb/atcoder_team_standings_colorizer
-// @version      0.1.2
+// @version      0.1.3
 // @description  AtCoder Team Standings Colorizer
 // @author       riantkb
 // @match        https://atcoder.jp/contests/*/standings/team
@@ -43,7 +43,7 @@ function aggregateRatings(team_ratings) {
       right = r;
     }
   }
-  return Math.floor((left + right) / 2);
+  return Math.floor((left + right) / 2 + 0.5);
 }
 
 /**
@@ -103,7 +103,7 @@ function decorate(tname, trating) {
 
 function heuristic(ratings) {
   if (ratings == undefined) {
-    setTimeout(main, 1000);
+    setTimeout(main, 2000);
     return;
   }
   const lines = document.querySelectorAll("tbody#standings-tbody > tr > td.standings-username");
@@ -135,7 +135,7 @@ function heuristic(ratings) {
     const tname = teamspan.innerHTML;
     team.innerHTML = decorate(tname, agg_rating);
   }
-  setTimeout(heuristic, 1000, ratings);
+  setTimeout(heuristic, 2000, ratings);
 }
 
 function main() {
