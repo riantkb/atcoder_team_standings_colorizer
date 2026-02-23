@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AtCoder Team Standings Colorizer
 // @namespace    https://github.com/riantkb/atcoder_team_standings_colorizer
-// @version      0.1.3
+// @version      0.2.0
 // @description  AtCoder Team Standings Colorizer
 // @author       riantkb
 // @match        https://atcoder.jp/contests/*/standings/team
@@ -21,7 +21,7 @@ GM_addStyle(GM_getResourceText("style.css"));
  * @param {number} rb
  */
 function getWinProbability(ra, rb) {
-  return 1 / (1 + 10 ** ((rb - ra) / 400));
+  return 1 / (1 + 6 ** ((rb - ra) / 400));
 }
 
 /**
@@ -36,8 +36,7 @@ function aggregateRatings(team_ratings) {
     for (const rat of team_ratings) {
       rWinsProbability *= getWinProbability(r, rat);
     }
-    const rating = Math.log10(1 / rWinsProbability - 1) * 400 + r;
-    if (rating > r) {
+    if (rWinsProbability < 0.5) {
       left = r;
     } else {
       right = r;
@@ -101,6 +100,9 @@ function decorate(tname, trating) {
   return `${circle_span} <span class='${getSpanClass(trating)}'>${tname}</span>`;
 }
 
+/**
+ * @param {Record<string, number>} ratings
+ */
 function heuristic(ratings) {
   if (ratings == undefined) {
     setTimeout(main, 2000);
@@ -109,32 +111,42 @@ function heuristic(ratings) {
   const lines = document.querySelectorAll("tbody#standings-tbody > tr > td.standings-username");
   // console.log(lines.length);
   if (lines.length == 0) {
-    setTimeout(heuristic, 3000);
+    setTimeout(heuristic, 3000, ratings);
     return;
   }
 
   for (const e of lines) {
     if (e.querySelector("span.gray.small50") == null) continue;
     if (e.querySelectorAll("span.tooltip1").length != 0) continue;
+
     const members = e.querySelectorAll("span.standings-affiliation > a");
     if (members.length == 0) continue;
+
+    /** @type {number[]} */
     const team_ratings = [];
     for (const member of members) {
-      let rating = 0;
-      if (member.innerHTML in ratings) {
-        rating = ratings[member.innerHTML];
-      }
+      const username = member.textContent?.trim() ?? "";
+      if (!username) continue;
+
+      const rating = username in ratings ? ratings[username] : 0;
       team_ratings.push(rating);
-      member.innerHTML = `<span class='${getSpanClass(rating)}'>${member.innerHTML}</span>`;
+
+      // wrap member name by color span
+      member.innerHTML = `<span class='${getSpanClass(rating)}'>${username}</span>`;
     }
+
     const agg_rating = aggregateRatings(team_ratings);
+
     const team = e.querySelector("a.username");
     if (team == null) continue;
+
     const teamspan = team.querySelector("span");
     if (teamspan == null) continue;
+
     const tname = teamspan.innerHTML;
     team.innerHTML = decorate(tname, agg_rating);
   }
+
   setTimeout(heuristic, 2000, ratings);
 }
 
@@ -143,16 +155,10 @@ function main() {
   if (isHeuristic) {
     const fetchurl = "https://raw.githubusercontent.com/riantkb/atcoder_rating_crawler/master/heuristic.json";
     fetch(fetchurl, { cache: "no-store" })
-      .then((res) => {
-        res
-          .json()
-          .then((dic) => {
-            const ratings = dic.data;
-            heuristic(ratings);
-          })
-          .catch((_e) => {
-            setTimeout(main, 3000);
-          });
+      .then((res) => res.json())
+      .then((dic) => {
+        const ratings = dic.data;
+        heuristic(ratings);
       })
       .catch((_e) => {
         setTimeout(main, 3000);
