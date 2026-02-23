@@ -1,20 +1,14 @@
 // ==UserScript==
 // @name         AtCoder Team Standings Colorizer
 // @namespace    https://github.com/riantkb/atcoder_team_standings_colorizer
-// @version      0.2.0
+// @version      0.3.0
 // @description  AtCoder Team Standings Colorizer
 // @author       riantkb
 // @match        https://atcoder.jp/contests/*/standings/team
-// @grant        GM_getResourceText
-// @grant        GM_addStyle
-// @resource     style.css https://raw.githubusercontent.com/riantkb/atcoder_team_standings_colorizer/master/tampermonkey_script.css
 // @updateURL    https://github.com/riantkb/atcoder_team_standings_colorizer/raw/master/AtCoder-Team-Standings-Colorizer.user.js
 // ==/UserScript==
 
 // @ts-check
-
-// @ts-ignore
-GM_addStyle(GM_getResourceText("style.css"));
 
 /**
  * @param {number} ra
@@ -80,14 +74,14 @@ function getSpanClass(rating) {
  */
 function generateTopcoderLikeCircle(rating) {
   if (rating >= 3600) {
-    return `<span style="display: inline-block; border-radius: 50%; border-style: solid; border-width: 1px; height: 12px; width: 12px; border-color: rgb(255, 215, 0); background: linear-gradient(to right, rgb(255, 215, 0), white, rgb(255, 215, 0));"></span>`;
+    return `<span class="topcoder-like-circle" title="${rating}" style="display: inline-block; border-radius: 50%; border-style: solid; border-width: 1px; height: 12px; width: 12px; border-color: rgb(255, 215, 0); background: linear-gradient(to right, rgb(255, 215, 0), white, rgb(255, 215, 0));"></span>`;
   }
   if (rating >= 3200) {
-    return `<span style="display: inline-block; border-radius: 50%; border-style: solid; border-width: 1px; height: 12px; width: 12px; border-color: rgb(128, 128, 128); background: linear-gradient(to right, rgb(128, 128, 128), white, rgb(128, 128, 128));"></span>`;
+    return `<span class="topcoder-like-circle" title="${rating}" style="display: inline-block; border-radius: 50%; border-style: solid; border-width: 1px; height: 12px; width: 12px; border-color: rgb(128, 128, 128); background: linear-gradient(to right, rgb(128, 128, 128), white, rgb(128, 128, 128));"></span>`;
   }
   const ccode = getColorCode(rating);
   const fill_ratio = rating >= 3200 ? 100 : (rating % 400) / 4;
-  return `<span style="display: inline-block; border-radius: 50%; border-style: solid; border-width: 1px; height: 12px; width: 12px; border-color: ${ccode}; background: linear-gradient(to top, ${ccode} ${fill_ratio}%, rgba(0,0,0,0) ${fill_ratio}%);"></span>`;
+  return `<span class="topcoder-like-circle" title="${rating}" style="display: inline-block; border-radius: 50%; border-style: solid; border-width: 1px; height: 12px; width: 12px; border-color: ${ccode}; background: linear-gradient(to top, ${ccode} ${fill_ratio}%, rgba(0,0,0,0) ${fill_ratio}%);"></span>`;
 }
 
 /**
@@ -96,14 +90,14 @@ function generateTopcoderLikeCircle(rating) {
  */
 function decorate(tname, trating) {
   const circle = generateTopcoderLikeCircle(trating);
-  const circle_span = `<span class='tooltip1'>${circle}<div class='description1'>${trating}</div></span>`;
-  return `${circle_span} <span class='${getSpanClass(trating)}'>${tname}</span>`;
+  return `${circle} <span class='${getSpanClass(trating)}'>${tname}</span>`;
 }
 
 /**
- * @param {Record<string, number>} ratings
+ * @param {Record<string, number> | undefined} ratings
+ * @param {Record<string, string> | undefined} spans
  */
-function heuristic(ratings) {
+function heuristic(ratings, spans) {
   if (ratings == undefined) {
     setTimeout(main, 2000);
     return;
@@ -111,13 +105,13 @@ function heuristic(ratings) {
   const lines = document.querySelectorAll("tbody#standings-tbody > tr > td.standings-username");
   // console.log(lines.length);
   if (lines.length == 0) {
-    setTimeout(heuristic, 3000, ratings);
+    setTimeout(heuristic, 3000, ratings, spans);
     return;
   }
 
   for (const e of lines) {
     if (e.querySelector("span.gray.small50") == null) continue;
-    if (e.querySelectorAll("span.tooltip1").length != 0) continue;
+    if (e.querySelectorAll("span.topcoder-like-circle").length != 0) continue;
 
     const members = e.querySelectorAll("span.standings-affiliation > a");
     if (members.length == 0) continue;
@@ -132,7 +126,11 @@ function heuristic(ratings) {
       team_ratings.push(rating);
 
       // wrap member name by color span
-      member.innerHTML = `<span class='${getSpanClass(rating)}'>${username}</span>`;
+      if (spans != undefined && username in spans) {
+        member.innerHTML = spans[username];
+      } else {
+        member.innerHTML = `<span class='${getSpanClass(rating)}'>${username}</span>`;
+      }
     }
 
     const agg_rating = aggregateRatings(team_ratings);
@@ -147,7 +145,7 @@ function heuristic(ratings) {
     team.innerHTML = decorate(tname, agg_rating);
   }
 
-  setTimeout(heuristic, 2000, ratings);
+  setTimeout(heuristic, 2000, ratings, spans);
 }
 
 function main() {
@@ -158,7 +156,8 @@ function main() {
       .then((res) => res.json())
       .then((dic) => {
         const ratings = dic.data;
-        heuristic(ratings);
+        const spans = dic.spans;
+        heuristic(ratings, spans);
       })
       .catch((_e) => {
         setTimeout(main, 3000);
